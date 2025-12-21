@@ -15,6 +15,7 @@ from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
 from aiogram.enums import ChatMemberStatus
 from aiogram.types import BotCommand, MessageReactionUpdated, BufferedInputFile, InputMediaPhoto
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # --- ИМПОРТ РИСОВАЛКИ (Убедитесь, что файл main_draw.py залит на GitHub!) ---
 from main_draw import create_active_user_image, create_top_words_image, create_top_sticker_image
@@ -139,7 +140,6 @@ async def get_chat_stats_api(chat_id: int):
 
 @dp.message(Command("stats"))
 async def send_stats(message: types.Message):
-    # ВАШ СТАРЫЙ КОД ГЕНЕРАЦИИ КАРТИНОК
     chat_id = message.chat.id
     if not db_pool: return
 
@@ -152,6 +152,7 @@ async def send_stats(message: types.Message):
     sticker_count = 0
     sticker_bytes = None
 
+    # --- 1. СБОР ДАННЫХ ИЗ БД ---
     async with db_pool.acquire() as conn:
         user_row = await conn.fetchrow('SELECT user_id, full_name, msg_count FROM user_stats WHERE chat_id=$1 ORDER BY msg_count DESC LIMIT 1', chat_id)
         if user_row:
@@ -167,6 +168,7 @@ async def send_stats(message: types.Message):
             sticker_file_id = sticker_row['file_id']
             sticker_count = sticker_row['count']
 
+    # --- 2. СКАЧИВАНИЕ ФАЙЛОВ (Аватарка, Стикер) ---
     if user_id:
         try:
             photos = await bot.get_user_profile_photos(user_id)
@@ -184,30 +186,48 @@ async def send_stats(message: types.Message):
             sticker_bytes = st_downloaded.read()
         except Exception: pass
 
+    # --- 3. ГЕНЕРАЦИЯ КАРТИНОК ---
     media_group = []
+    
+    # Картинка 1: Активный
     if msg_count > 0:
         image_active = await asyncio.to_thread(create_active_user_image, avatar_bytes, msg_count, user_name)
         if image_active:
             file_active = BufferedInputFile(image_active.read(), filename="active.png")
             media_group.append(InputMediaPhoto(media=file_active, caption="Статистика чата"))
 
+    # Картинка 2: Слова
     if top_words:
         image_words = await asyncio.to_thread(create_top_words_image, top_words)
         if image_words:
             file_words = BufferedInputFile(image_words.read(), filename="words.png")
             media_group.append(InputMediaPhoto(media=file_words))
 
+    # Картинка 3: Стикер
     if sticker_bytes:
         image_sticker = await asyncio.to_thread(create_top_sticker_image, sticker_bytes, sticker_count)
         if image_sticker:
             file_sticker = BufferedInputFile(image_sticker.read(), filename="sticker.png")
             media_group.append(InputMediaPhoto(media=file_sticker))
 
-    if media_group:
-        await message.answer_media_group(media=media_group)
-    else:
-        await message.answer("❌ Недостаточно данных для статистики.")
+    # --- 4. ОТПРАВКА (КАРТИНКИ + КНОПКА) ---
+    
+    # Генерируем ссылку на сайт для ЭТОГО чата
+    web_url = f"https://chatly1-iota.vercel.app/?id={chat_id}"
 
+    # Создаем кнопку
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📊 Смотреть на сайте", url=web_url)]
+    ])
+
+    if media_group:
+        # Сначала отправляем альбом картинок
+        await message.answer_media_group(media=media_group)
+        # Затем отправляем кнопку отдельным сообщением
+        await message.answer("👆 Полная статистика и анимация на сайте:", reply_markup=keyboard)
+    else:
+        # Если данных нет вообще
+        await message.answer("❌ Недостаточно данных для статистики.")
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     await message.answer("Я считаю статистику. Напиши /stats. (API работает)")
