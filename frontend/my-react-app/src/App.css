@@ -268,7 +268,85 @@ body, html, #root {
   font-size: 12px;
   font-weight: bold;
 }
+/* --- НОВЫЙ ДИЗАЙН ПЕРВОГО СЛАЙДА --- */
 
+/* 1. Контейнер для цифры слева */
+.stats-left-container {
+  position: absolute;
+  left: 20px;       /* Отступ слева */
+  top: 50%;         /* Центр по вертикали */
+  transform: translateY(-50%); /* Точная центровка */
+  z-index: 20;      /* Поверх фона и аватарки */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* Прижать влево */
+}
+
+/* Огромная цифра */
+.big-number {
+  font-family: 'Stolzlbold', sans-serif;
+  font-size: 90px;  /* Размер как на макете */
+  line-height: 0.8; /* Чтобы цифры стояли плотно */
+  color: #ffffff;
+  margin-bottom: 5px;
+}
+
+/* Надпись "сообщений" */
+.big-number-label {
+  font-family: 'Stolzlbold', sans-serif;
+  font-size: 24px;
+  color: #ffffff;
+  opacity: 0.9;
+}
+
+/* 2. Контейнер для аватарки справа */
+.hero-avatar-container {
+  position: absolute;
+  right: -20px;     /* Чуть-чуть уходит за край экрана, как на фото */
+  top: 55%;         /* Чуть ниже центра */
+  transform: translateY(-50%);
+  z-index: 15;      /* Ниже цифры, но выше фона */
+}
+
+/* Сама картинка */
+.hero-avatar {
+  width: 260px;     /* Большая аватарка */
+  height: 260px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 6px solid rgba(255, 255, 255, 0.2); /* Полупрозрачная обводка (опционально) */
+  box-shadow: -10px 10px 30px rgba(0,0,0,0.2); /* Тень влево-вниз */
+}
+
+/* Заглушка, если нет фото */
+.hero-avatar-placeholder {
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background-color: #ddd;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 80px;
+  color: #fff;
+  border: 6px solid rgba(255, 255, 255, 0.2);
+}
+
+/* 3. Описание снизу слева */
+.bottom-description-text {
+  position: absolute;
+  bottom: 20px;     /* Отступ от нижнего края (над индикаторами) */
+  left: 24px;
+  width: 60%;       /* Ограничиваем ширину, чтобы не наезжало далеко */
+  
+  font-family: 'Stolzl', sans-serif;
+  font-size: 16px;
+  line-height: 1.2;
+  color: #383838;   /* Темно-серый цвет текста как на макете */
+  opacity: 0.8;
+  z-index: 20;
+  text-align: left;
+}
 /* Простая анимация появления */
 @keyframes popIn {
   from { opacity: 0; transform: scale(0.5); }

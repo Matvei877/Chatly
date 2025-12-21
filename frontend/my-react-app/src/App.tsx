@@ -98,27 +98,38 @@ function App() {
       >
         <img src={currentSlide.image} alt="" className="bg-image" />
 
-        {/* === СЛАЙД 1: АВАТАРКА === */}
-        {currentIndex === 0 && stats.active_user && (
-          <div className="avatar-container">
-            {stats.active_user.avatar_url ? (
-              <img 
-                src={stats.active_user.avatar_url} 
-                alt="Avatar" 
-                className="user-avatar"
-              />
-            ) : (
-              <div className="user-avatar-placeholder">
-                 {stats.active_user.name[0]}
+        {currentIndex === 0 && stats && stats.active_user && (
+          <>
+            {/* БЛОК С ЦИФРАМИ СЛЕВА */}
+            <div className="stats-left-container">
+              <div className="big-number">
+                {stats.active_user.count}
               </div>
-            )}
-            <div className="user-name-overlay">
-               {stats.active_user.name}
+              <div className="big-number-label">
+                сообщений
+              </div>
             </div>
-            <div className="user-count-overlay">
-               {stats.active_user.count} сообщений
+
+            {/* БЛОК С АВАТАРКОЙ СПРАВА */}
+            <div className="hero-avatar-container">
+               {stats.active_user.avatar_url ? (
+                  <img 
+                    src={stats.active_user.avatar_url} 
+                    alt="Avatar" 
+                    className="hero-avatar"
+                  />
+               ) : (
+                  <div className="hero-avatar-placeholder">
+                    {stats.active_user.name[0]}
+                  </div>
+               )}
             </div>
-          </div>
+
+            {/* ТЕКСТ СНИЗУ (Имя в описании) */}
+            <div className="bottom-description-text">
+              <span style={{ fontWeight: 'bold' }}>{stats.active_user.name}</span> написал больше всего сообщений в чате ({stats.active_user.count}) !
+            </div>
+          </>
         )}
 
         {/* === СЛАЙД 2: СЛОВА (НОВОЕ) === */}
