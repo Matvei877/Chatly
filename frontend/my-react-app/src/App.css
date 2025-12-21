@@ -229,3 +229,48 @@ body, html, #root {
   border: none;
   color: #ffffff;
 }
+.words-container {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  width: 80%;
+  z-index: 10;
+}
+
+/* Пузырек со словом */
+.word-bubble {
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 8px 16px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  animation: popIn 0.5s ease forwards; /* Анимация появления */
+}
+
+.word-text {
+  font-weight: bold;
+  color: #3D5258;
+  font-size: 18px;
+}
+
+.word-count {
+  background-color: #55C2BC;
+  color: white;
+  border-radius: 10px;
+  padding: 2px 6px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* Простая анимация появления */
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 1; transform: scale(1); }
+}
