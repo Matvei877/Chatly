@@ -2,3 +2,5 @@ aiogram
 asyncpg
 python-dotenv
 Pillow
+fastapi
+uvicorn
