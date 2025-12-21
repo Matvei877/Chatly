@@ -1,0 +1,181 @@
+/* 1. ГЛОБАЛЬНЫЙ СБРОС */
+body, html, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* Блокируем прокрутку всей страницы */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased; /* Улучшает рендеринг шрифтов на iOS/Mac */
+}
+@font-face {
+  font-family: 'Stolzl'; /* Придумываем имя шрифту */
+  src: url('./assets/fonts/stolzl_regular.otf') format('opentype'); /* Указываем путь к файлу */
+  font-weight: regular; /* Так как это Bold версия */
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Stolzlbold'; /* Придумываем имя шрифту */
+  src: url('./assets/fonts/stolzl_bold.otf') format('opentype'); /* Указываем путь к файлу */
+  font-weight: regular; /* Так как это Bold версия */
+  font-style: normal;
+}
+/* 2. ГЛАВНЫЙ КОНТЕЙНЕР */
+.main-container {
+  display: flex;
+  flex-direction: column; /* Элементы выстраиваются в столбик: Верх -> Центр -> Низ */
+  width: 100vw;
+  height: 100vh;  /* Для старых браузеров */
+  height: 100dvh; /* Динамическая высота (учитывает адресную строку мобильных браузеров) */
+  background-color: #fff; /* На всякий случай фон белый */
+}
+
+/* 3. ВЕРХНИЙ БЕЛЫЙ БЛОК */
+.white-header {
+  width: 100%;
+  height: 100px;/* Высота чуть меньше, чем у нижнего блока */
+  background-color: #ffffff;
+  flex-shrink: 0; /* Запрещаем сжиматься, высота всегда фиксирована */
+  z-index: 10;
+}
+
+.colored-section {
+  flex: 1;
+  width: 100%;
+  transition: background-color 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+  position: relative; 
+  overflow: hidden;
+
+  /* ИЗМЕНЕНИЯ ЗДЕСЬ: */
+  display: flex;
+  flex-direction: column; /* Выстраиваем элементы сверху вниз */
+  align-items: center;    /* Центрируем индикаторы по горизонтали */
+  padding-top: 30px;
+}
+
+
+.bg-image {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 1;
+
+  /* --- 1. РАЗМЕР И ОГРАНИЧЕНИЕ --- */
+  width: 75%;         /* На мобильных занимает 75% ширины экрана */
+  max-width: 320px;   /* <--- ДОБАВИЛИ ЭТО: Не растягиваться шире 450px */
+  height: auto;       
+  
+  /* --- 2. ПОЛОЖЕНИЕ --- */
+  top: -5%;
+  
+  /* Можно задать отступ справа в пикселях, чтобы на больших экранах
+     она не улетала слишком далеко, или оставить в % */
+  right: -20px; /* Я заменил % на px для более точного контроля края */
+  
+  left: auto; 
+}
+
+/* Индикаторы */
+.indicators-wrapper {
+  display: flex;
+  gap: 8px;
+  position: relative; 
+  z-index: 10; 
+  
+  /* Добавляем отступ снизу, чтобы текст не прилипал к индикаторам */
+  margin-bottom: 45px; 
+}
+
+.indicator {
+  width: 40px;
+  height: 8px;
+  background-color: rgba(255, 255, 255, 0.4); /* Полупрозрачный белый */
+  border-radius: 2px;
+  transition: background-color 0.3s ease;
+}
+
+.indicator.active {
+  background-color: #ffffff; /* Активный индикатор - ярко белый */
+}
+.slide-title {
+  position: relative; /* Чтобы быть выше фона */
+  z-index: 10;        /* Поверх картинки-кляксы */
+  
+  width: 100%;        /* Занимает всю ширину */
+  padding: 0 24px;    /* Отступы слева и справа от края экрана */
+  box-sizing: border-box;
+
+  font-family: 'Stolzlbold', sans-serif; /* Ваш шрифт */
+  /* Если в @font-face вы указали font-weight: regular для Bold файла, оставляем normal */
+  font-weight: normal; 
+  
+  font-size: 30px;    /* Размер шрифта (подберите под макет) */
+  line-height: 1.1;   /* Межстрочный интервал (плотный, как на макете) */
+  color: #ffffff;     /* Белый цвет */
+  
+  text-align: left;   /* Выравнивание по левому краю */
+  white-space: pre-wrap; /* Чтобы работал перенос строки \n из JS */
+  margin: 0;          /* Убираем лишние отступы браузера */
+}
+
+/* 5. НИЖНИЙ БЕЛЫЙ БЛОК (ФУТЕР) */
+.white-footer {
+  width: 100%;
+  background-color: #ffffff;
+  /* Внутренние отступы: Сверху 24px, Снизу 40px (безопасная зона для iOS) */
+  padding: 24px 20px 40px 20px; 
+  box-sizing: border-box;
+  
+  display: flex;
+  justify-content: center; /* Центрируем контейнер с кнопками */
+  flex-shrink: 0; /* Запрещаем сжиматься */
+}
+
+/* Ограничитель ширины кнопок (чтобы на ПК не были огромными) */
+.buttons-container {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  max-width: 360px; /* Максимальная ширина блока кнопок */
+}
+
+/* 6. СТИЛИ КНОПОК */
+.btn {
+  /* Добавляем 'Stolzl' в начало списка шрифтов */
+  font-family: 'Stolzl', -apple-system, BlinkMacSystemFont, sans-serif;
+  
+  /* Остальные стили кнопок остаются прежними */
+  flex: 1;
+  height: 50px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: normal; 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.2s, transform 0.1s;
+  user-select: none;
+}
+
+/* Эффект нажатия */
+.btn:active {
+  opacity: 0.7;
+  transform: scale(0.98);
+}
+
+/* Кнопка "Поделиться" (Белая) */
+.btn-share {
+  background-color: #ffffff;
+  border: 1.6px solid #000000; /* Чуть жирнее рамка */
+  color: #000000;
+}
+
+/* Кнопка "Дальше" (Черная) */
+.btn-next {
+  background-color: #2D2D2D;
+  border: none;
+  color: #ffffff;
+}

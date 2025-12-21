@@ -11,7 +11,7 @@ from aiogram.enums import ChatMemberStatus
 from aiogram.types import BotCommand, MessageReactionUpdated, BufferedInputFile, InputMediaPhoto
 
 # --- ИМПОРТ ---
-from main_draw import create_active_user_image, create_top_words_image 
+from main_draw import create_active_user_image, create_top_words_image, create_top_sticker_image
 
 # --- НАСТРОЙКИ ---
 dotenv.load_dotenv()
@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 db_pool = None
-STOP_WORDS = {"и", "в", "не", "на", "я", "что", "с", "а", "то", "как", "у", "все", "но", "по", "он", "она", "так", "же", "от", "о", "ты", "за", "да", "из", "к", "мы", "бы", "вы", "ну", "ли", "ни", "много"}
+STOP_WORDS = {"и", "в", "не", "на", "я", "что", "с", "а", "то", "как", "у", "все", "но", "по", "он", "она", "так", "же", "от", "о", "ты", "за", "да", "из", "к", "мы", "бы", "вы", "ну", "ли", "ни", "много", "это"}
 
 # --- БД ---
 async def init_db():
@@ -58,8 +58,12 @@ async def send_stats(message: types.Message):
     msg_count = 0
     avatar_bytes = None
     top_words = [] 
+    
+    sticker_file_id = None
+    sticker_count = 0
+    sticker_bytes = None
 
-    # --- 1. СБОР ДАННЫХ ИЗ БД ---
+    # --- 1. СБОР ДАННЫХ ---
     async with db_pool.acquire() as conn:
         # Самый активный
         user_row = await conn.fetchrow('SELECT user_id, full_name, msg_count FROM user_stats WHERE chat_id=$1 ORDER BY msg_count DESC LIMIT 1', chat_id)
@@ -68,11 +72,17 @@ async def send_stats(message: types.Message):
             msg_count = user_row['msg_count']
             user_id = user_row['user_id']
         
-        # Топ 3 слова
+        # Топ слова
         words_rows = await conn.fetch('SELECT word, count FROM word_stats WHERE chat_id=$1 ORDER BY count DESC LIMIT 3', chat_id)
         top_words = [(r['word'], r['count']) for r in words_rows]
 
-    # --- 2. СКАЧИВАНИЕ АВАТАРКИ ---
+        # Топ стикер
+        sticker_row = await conn.fetchrow('SELECT file_id, count FROM sticker_stats WHERE chat_id=$1 ORDER BY count DESC LIMIT 1', chat_id)
+        if sticker_row:
+            sticker_file_id = sticker_row['file_id']
+            sticker_count = sticker_row['count']
+
+    # --- 2. СКАЧИВАНИЕ ФАЙЛОВ ---
     if user_id:
         try:
             photos = await bot.get_user_profile_photos(user_id)
@@ -83,30 +93,40 @@ async def send_stats(message: types.Message):
                 avatar_bytes = downloaded_file.read()
         except Exception:
             pass
+            
+    if sticker_file_id:
+        try:
+            st_file_info = await bot.get_file(sticker_file_id)
+            st_downloaded = await bot.download_file(st_file_info.file_path)
+            sticker_bytes = st_downloaded.read()
+        except Exception:
+            pass
 
     # --- 3. ГЕНЕРАЦИЯ КАРТИНОК ---
-    
-    # Список медиа для отправки
     media_group = []
 
-    # Картинка 1: Активный пользователь
-    # Генерируем в потоке, чтобы не блокировать бота
-    image_active = await asyncio.to_thread(create_active_user_image, avatar_bytes, msg_count, user_name)
-    
-    # Добавляем в список медиа
-    if image_active:
-        file_active = BufferedInputFile(image_active.read(), filename="active.png")
-        # caption можно добавить только к первой фотке, он будет общим для альбома
-        media_group.append(InputMediaPhoto(media=file_active, caption="Статистика чата"))
+    # Картинка 1: Активный
+    if msg_count > 0:
+        image_active = await asyncio.to_thread(create_active_user_image, avatar_bytes, msg_count, user_name)
+        if image_active:
+            file_active = BufferedInputFile(image_active.read(), filename="active.png")
+            media_group.append(InputMediaPhoto(media=file_active, caption="Статистика чата"))
 
-    # Картинка 2: Топ слов
+    # Картинка 2: Слова
     if top_words:
         image_words = await asyncio.to_thread(create_top_words_image, top_words)
         if image_words:
             file_words = BufferedInputFile(image_words.read(), filename="words.png")
             media_group.append(InputMediaPhoto(media=file_words))
 
-    # --- 4. ОТПРАВКА АЛЬБОМА ---
+    # Картинка 3: Стикер
+    if sticker_bytes:
+        image_sticker = await asyncio.to_thread(create_top_sticker_image, sticker_bytes, sticker_count)
+        if image_sticker:
+            file_sticker = BufferedInputFile(image_sticker.read(), filename="sticker.png")
+            media_group.append(InputMediaPhoto(media=file_sticker))
+
+    # --- 4. ОТПРАВКА ---
     if media_group:
         await message.answer_media_group(media=media_group)
     else:
