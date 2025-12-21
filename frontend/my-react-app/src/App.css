@@ -61,12 +61,12 @@ body, html, #root {
   opacity: 1;
 
   /* --- 1. РАЗМЕР И ОГРАНИЧЕНИЕ --- */
-  width: 75%;         /* На мобильных занимает 75% ширины экрана */
+  width: 65%;         /* На мобильных занимает 75% ширины экрана */
   max-width: 320px;   /* <--- ДОБАВИЛИ ЭТО: Не растягиваться шире 450px */
-  height: auto;       
+  height: 700px;       
   
   /* --- 2. ПОЛОЖЕНИЕ --- */
-  top: -5%;
+  top: -10%;
   
   /* Можно задать отступ справа в пикселях, чтобы на больших экранах
      она не улетала слишком далеко, или оставить в % */
@@ -94,7 +94,25 @@ body, html, #root {
   border: 4px solid white; /* Белая обводка */
   box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
+.top-words-list {
+  position: absolute;
+  top: 50%;
+  left: 24px;        /* Выравнивание по левому краю (как у заголовка) */
+  transform: translateY(-40%); /* Центрируем, чуть сдвигая вверх */
+  display: flex;
+  flex-direction: column;
+  gap: 15px;         /* Расстояние между строками */
+  z-index: 20;
+  text-align: left;
+}
 
+.top-word-item {
+  font-family: 'Stolzlbold', sans-serif; /* Жирный шрифт */
+  font-size: 40px;    /* Очень крупный размер */
+  line-height: 1.1;
+  color: #ffffff;
+  white-space: nowrap; /* Чтобы длинные слова не ломали верстку слишком сильно */
+}
 /* Заглушка, если нет фото */
 .user-avatar-placeholder {
   width: 120px;
@@ -133,7 +151,7 @@ body, html, #root {
   z-index: 10; 
   
   /* Добавляем отступ снизу, чтобы текст не прилипал к индикаторам */
-  margin-bottom: 45px; 
+  margin-bottom: 30px; 
 }
 
 .indicator {
@@ -173,7 +191,7 @@ body, html, #root {
   width: 100%;
   background-color: #ffffff;
   /* Внутренние отступы: Сверху 24px, Снизу 40px (безопасная зона для iOS) */
-  padding: 24px 20px 40px 20px; 
+  padding: 24px 20px 20px 20px; 
   box-sizing: border-box;
   
   display: flex;
@@ -302,10 +320,14 @@ body, html, #root {
 /* 2. Контейнер для аватарки справа */
 .hero-avatar-container {
   position: absolute;
-  right: -20px;     /* Чуть-чуть уходит за край экрана, как на фото */
-  top: 55%;         /* Чуть ниже центра */
-  transform: translateY(-50%);
-  z-index: 15;      /* Ниже цифры, но выше фона */
+  right: -50px;
+  top: 55%;
+  transform: translateY(-50%); /* Исходное положение */
+  z-index: 15;
+  
+  /* !!! ДОБАВЛЕНА АНИМАЦИЯ !!! */
+  /* Анимация длится 0.8сек, с плавной кривой безье */
+  animation: slideInRight 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
 /* Сама картинка */
@@ -314,8 +336,7 @@ body, html, #root {
   height: 260px;
   border-radius: 50%;
   object-fit: cover;
-  border: 6px solid rgba(255, 255, 255, 0.2); /* Полупрозрачная обводка (опционально) */
-  box-shadow: -10px 10px 30px rgba(0,0,0,0.2); /* Тень влево-вниз */
+  box-shadow: 0px 10px 30px rgba(0,0,0,0.2); /* Тень влево-вниз */
 }
 
 /* Заглушка, если нет фото */
@@ -335,20 +356,52 @@ body, html, #root {
 /* 3. Описание снизу слева */
 .bottom-description-text {
   position: absolute;
-  bottom: 20px;     /* Отступ от нижнего края (над индикаторами) */
+  bottom: 50px;     /* Отступ от нижнего края (над индикаторами) */
   left: 24px;
-  width: 60%;       /* Ограничиваем ширину, чтобы не наезжало далеко */
+  width: 50%;       /* Ограничиваем ширину, чтобы не наезжало далеко */
   
-  font-family: 'Stolzl', sans-serif;
-  font-size: 16px;
+  font-family: 'Stolzlbold', sans-serif;
+  font-size: 14px;
   line-height: 1.2;
   color: #383838;   /* Темно-серый цвет текста как на макете */
   opacity: 0.8;
   z-index: 20;
   text-align: left;
 }
-/* Простая анимация появления */
-@keyframes popIn {
-  from { opacity: 0; transform: scale(0.5); }
-  to { opacity: 1; transform: scale(1); }
+/* --- АНИМАЦИИ (Keyframes) --- */
+
+/* 1. Плавное появление снизу вверх (для текста) */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px); /* Начинаем ниже на 30px */
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 2. Выезд справа налево (для аватарки) */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100px) translateY(-50%); /* Сдвиг вправо + сохранение центровки по Y */
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) translateY(-50%); /* Возврат на место */
+  }
+}
+
+/* 3. Появление слов (для списка топ слов) */
+@keyframes popInList {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-40%); /* Чуть меньше и сохраняем центровку Y */
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(-40%);
+  }
 }

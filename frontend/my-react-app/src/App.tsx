@@ -72,7 +72,29 @@ function App() {
     }
   };
   
-  const handleShare = () => {}; 
+  const handleShare = async () => {
+    // Получаем ID из URL (так же, как в useEffect)
+    const params = new URLSearchParams(window.location.search);
+    const chatId = params.get('id');
+
+    if (!chatId) return;
+
+    // Пытаемся закрыть Mini App после нажатия (если это Telegram WebApp)
+    // @ts-ignore
+    if (window.Telegram && window.Telegram.WebApp) {
+        // @ts-ignore
+        window.Telegram.WebApp.close();
+    }
+
+    // Отправляем запрос боту, чтобы он скинул картинки
+    try {
+      await fetch(`${API_URL}/api/share/${chatId}`, {
+        method: 'POST',
+      });
+    } catch (error) {
+      console.error("Ошибка при отправке статистики:", error);
+    }
+  };
 
   const handlers = useSwipeable({
     onSwipedLeft: () => handleNext(),
@@ -132,16 +154,30 @@ function App() {
           </>
         )}
 
-        {/* === СЛАЙД 2: СЛОВА (НОВОЕ) === */}
-        {currentIndex === 1 && stats.top_words && (
-          <div className="words-container">
-            {stats.top_words.map((item: any, index: number) => (
-              <div key={index} className="word-bubble">
-                <span className="word-text">{item.word}</span>
-                <span className="word-count">{item.count}</span>
+        {currentIndex === 1 && stats && stats.top_words && stats.top_words.length >= 2 && (
+          <>
+            {/* СПИСОК СЛОВ СЛЕВА */}
+            <div className="top-words-list">
+              {/* Используем slice(0, 2), чтобы взять только первые два элемента */}
+              {stats.top_words.slice(0, 3).map((item: any, index: number) => (
+                <div key={index} className="top-word-item">
+                  {index + 1}. {item.word}
+                </div>
+              ))}
+            </div>
+
+            {/* ТЕКСТ СНИЗУ (Описание про самое популярное слово) */}
+            {/* Проверяем, что есть хотя бы одно слово, чтобы вывести статистику */}
+            {stats.top_words.length > 0 && (
+              <div className="bottom-description-text">
+                <span style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>
+                  Было использовано
+                </span>
+                более {stats.top_words[0].count} слов <br/>
+                “{stats.top_words[0].word}” !
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
 
         <div className="indicators-wrapper">
