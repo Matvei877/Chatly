@@ -4,9 +4,9 @@ import asyncpg
 import re
 import os
 import dotenv
+import httpx
 from contextlib import asynccontextmanager
 
-# --- НОВЫЕ ИМПОРТЫ ДЛЯ СЕРВЕРА ---
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -17,7 +17,6 @@ from aiogram.enums import ChatMemberStatus
 from aiogram.types import BotCommand, MessageReactionUpdated, BufferedInputFile, InputMediaPhoto
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# --- ИМПОРТ РИСОВАЛКИ (Убедитесь, что файл main_draw.py залит на GitHub!) ---
 from main_draw import create_active_user_image, create_top_words_image, create_top_sticker_image
 
 # --- НАСТРОЙКИ ---
@@ -59,7 +58,18 @@ def clean_and_split_text(text):
     return [w for w in text.split() if len(w) > 2 and w not in STOP_WORDS]
 
 # --- 🚀 ИНТЕГРАЦИЯ FASTAPI (СЕРВЕР ДЛЯ САЙТА) ---
+# --- ФУНКЦИЯ ДЛЯ ПИНГА (ЧТОБЫ НЕ ЗАСЫПАЛ) ---
+async def keep_alive_task():
+    url = "https://chatly-backend-nflu.onrender.com" 
 
+    while True:
+        await asyncio.sleep(600)  # Ждем 10 минут (600 секунд)
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.get(url)
+                print(f"🔄 Пинг отправлен на {url}")
+        except Exception as e:
+            print(f"⚠️ Ошибка пинга: {e}")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Эта функция запускается при старте сервера"""
@@ -70,25 +80,30 @@ async def lifespan(app: FastAPI):
     await bot.set_my_commands([BotCommand(command="stats", description="Показать статистику")])
     await bot.delete_webhook(drop_pending_updates=True)
     
-    # 3. Запускаем бота в фоновом режиме (чтобы не блокировать сайт)
+    # 3. Запускаем бота
     polling_task = asyncio.create_task(dp.start_polling(bot, allowed_updates=["message", "message_reaction", "chat_member", "my_chat_member"]))
+    
+    # 4. ЗАПУСКАЕМ САМО-ПИНГ
+    ping_task = asyncio.create_task(keep_alive_task()) 
+    
     print("🚀 Сервер и Бот запущены!")
     
     yield # Тут сервер работает
     
-    # 4. При выключении - чистим за собой
+    # 5. При выключении - чистим за собой
     polling_task.cancel()
+    ping_task.cancel() # <--- ДОБАВИТЬ ЭТО (Останавливаем пингер)
+    
     if db_pool:
         await db_pool.close()
     print("👋 Сервер остановлен")
-
 # Создаем приложение (Именно его ищет Render)
 app = FastAPI(lifespan=lifespan)
 
 # Разрешаем сайту React обращаться к серверу
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Можно заменить "*" на адрес вашего сайта на Vercel
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -134,7 +149,10 @@ async def get_chat_stats_api(chat_id: int):
         "active_user": active_user_data,
         "top_words": top_words
     }
-
+# Эндпоинт для само-пинга
+@app.get("/ping")
+async def ping_server():
+    return {"status": "alive"}
 
 # --- ОБЫЧНЫЕ ХЕНДЛЕРЫ БОТА ---
 

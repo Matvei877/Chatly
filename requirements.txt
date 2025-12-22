@@ -4,3 +4,4 @@ python-dotenv
 Pillow
 fastapi
 uvicorn
+httpx
