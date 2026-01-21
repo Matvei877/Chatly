@@ -25,11 +25,10 @@ dotenv.load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-# Логика получения ссылки на БД (с приоритетом)
+# Логика получения ссылки на БД
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     try:
-        # Пытаемся импортировать из файла, созданного командой запуска
         from config import DATABASE_URL as FILE_DB_URL
         DATABASE_URL = FILE_DB_URL
         print("✅ DATABASE_URL загружен из config.py")
@@ -52,6 +51,7 @@ async def init_db_pool():
     try:
         db_pool = await asyncpg.create_pool(dsn=DATABASE_URL)
         async with db_pool.acquire() as connection:
+            # Создаем таблицы, если их нет
             await connection.execute('''CREATE TABLE IF NOT EXISTS sticker_stats (chat_id BIGINT, unique_id TEXT, file_id TEXT, count INTEGER DEFAULT 1, PRIMARY KEY (chat_id, unique_id))''')
             await connection.execute('''CREATE TABLE IF NOT EXISTS word_stats (chat_id BIGINT, word TEXT, count INTEGER DEFAULT 1, PRIMARY KEY (chat_id, word))''')
             await connection.execute('''CREATE TABLE IF NOT EXISTS user_stats (chat_id BIGINT, user_id BIGINT, full_name TEXT, msg_count INTEGER DEFAULT 1, PRIMARY KEY (chat_id, user_id))''')
@@ -75,8 +75,8 @@ def clean_and_split_text(text):
 
 # --- ФОНОВЫЕ ЗАДАЧИ ---
 async def keep_alive_task():
-    # Оставили вашу ссылку, как просили
-    url = "https://chatly-backend-nflu.onrender.com" 
+    # 🛠 ИСПРАВЛЕНИЕ 1: Добавили /ping в конец ссылки, чтобы не было ошибки 404
+    url = "https://chatly-backend-nflu.onrender.com/ping" 
     print(f"🔄 Запущен пингер для: {url}")
 
     while True:
@@ -84,7 +84,6 @@ async def keep_alive_task():
         try:
             async with httpx.AsyncClient() as client:
                 await client.get(url)
-                # print(f"Ping sent to {url}") # Раскомментируйте, если нужно видеть логи
         except Exception as e:
             print(f"⚠️ Ошибка пинга: {e}")
 
@@ -104,7 +103,7 @@ async def lifespan(app: FastAPI):
     
     yield # Работа приложения
     
-    # 2. Остановка (Graceful shutdown)
+    # 2. Остановка
     print("🛑 Остановка сервера...")
     polling_task.cancel()
     ping_task.cancel()
@@ -128,6 +127,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 🛠 ИСПРАВЛЕНИЕ 2: Добавили главную страницу, чтобы не было ошибки 404
+@app.get("/")
+async def root():
+    return "Bot is running!"
+
+# 🛠 ИСПРАВЛЕНИЕ 3: Разрешили методы GET и HEAD, чтобы мониторинг не давал ошибку 405
+@app.api_route("/ping", methods=["GET", "HEAD"])
+async def ping_server():
+    return {"status": "alive"}
 
 @app.get("/api/chat/{chat_id}")
 async def get_chat_stats_api(chat_id: int):
@@ -163,10 +172,6 @@ async def get_chat_stats_api(chat_id: int):
         "active_user": active_user_data,
         "top_words": top_words
     }
-
-@app.get("/ping")
-async def ping_server():
-    return {"status": "alive"}
 
 # --- ХЕНДЛЕРЫ БОТА ---
 @dp.message(Command("stats"))
@@ -310,7 +315,6 @@ async def process_text_message(message: types.Message):
 
 # --- ЗАПУСК ---
 if __name__ == "__main__":
-    # Получаем порт от хостинга (BotHost, Render, Heroku) или ставим 8000
     port = int(os.getenv("SERVER_PORT", os.getenv("PORT", 8000)))
     print(f"🏁 Запуск сервера на порту {port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
