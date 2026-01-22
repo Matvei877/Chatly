@@ -189,30 +189,21 @@ def create_top_sticker_image(sticker_bytes, count):
 
     # --- НАСТРОЙКИ ---
     max_sticker_size = 800  # Максимальный размер (как на шаблоне)
-    box_x = 218             # Координата X, которую ты просил
-    box_y = 551             # Координата Y, которую ты просил
+    box_x = 218             # Координата X
+    box_y = 551             # Координата Y
 
     # 2. Наложение стикера
     if sticker_bytes:
         try:
             sticker = Image.open(io.BytesIO(sticker_bytes)).convert("RGBA")
             
-            # --- ЛОГИКА УВЕЛИЧЕНИЯ (ПРИНУДИТЕЛЬНАЯ) ---
             old_w, old_h = sticker.size
-            
-            # Считаем коэффициент, чтобы вписать картинку в 800x800,
-            # но при этом УВЕЛИЧИТЬ её, если она меньше.
             ratio = min(max_sticker_size / old_w, max_sticker_size / old_h)
-            
             new_w = int(old_w * ratio)
             new_h = int(old_h * ratio)
             
-            # Используем resize, чтобы растянуть маленькие стикеры
             sticker = sticker.resize((new_w, new_h), Image.Resampling.LANCZOS)
-            # --------------------------
 
-            # Центрируем стикер в зоне 800x800
-            # Если стикер квадратный, он встанет ровно в 218, 551
             final_w, final_h = sticker.size
             paste_x = box_x + (max_sticker_size - final_w) // 2
             paste_y = box_y + (max_sticker_size - final_h) // 2
@@ -231,7 +222,7 @@ def create_top_sticker_image(sticker_bytes, count):
     full_text = f"Было использовано ровно {count} этих стикеров"
     
     x_pos = 159
-    max_width = 640  # Граница текста (чтобы не был строкой)
+    max_width = 640 
     line_height = 55
     text_color = "#A35F5F"
     target_bottom_y = 1649 
@@ -263,100 +254,158 @@ def create_top_sticker_image(sticker_bytes, count):
     return bio
 
 def create_top_sticker_gif(video_bytes, count):
+    # Оптимизированная версия для Render (ffmpeg без pyav)
+    temp_video = None
+    reader = None
     try:
         bg_img_path = "bg_sticker.png"
         if not os.path.exists(bg_img_path):
-            bg_img = Image.new("RGBA", (2000, 2000), (240, 240, 240))
+            base_bg = Image.new("RGBA", (2000, 2000), (240, 240, 240))
         else:
-            bg_img = Image.open(bg_img_path).convert("RGBA")
+            base_bg = Image.open(bg_img_path).convert("RGBA")
         
         max_sticker_size = 800
         box_x = 218
         box_y = 551
         
+        # Записываем видео
         temp_video = tempfile.NamedTemporaryFile(delete=False, suffix='.webm')
         temp_video.write(video_bytes)
         temp_video.close()
         
+        frames = []
+        
+        # --- ГЛАВНОЕ ИЗМЕНЕНИЕ ---
+        # Используем imageio.get_reader (v2 API), который использует imageio-ffmpeg
+        # Это надежнее всего и не требует установки 'av'
         try:
             reader = imageio.get_reader(temp_video.name, 'ffmpeg')
-            fps = reader.get_meta_data().get('fps', 10)
-            
-            frames = []
-            for frame in reader:
-                frame_img = Image.fromarray(frame).convert("RGBA")
-                
-                old_w, old_h = frame_img.size
-                ratio = min(max_sticker_size / old_w, max_sticker_size / old_h)
-                new_w = int(old_w * ratio)
-                new_h = int(old_h * ratio)
-                frame_img = frame_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-                
-                final_w, final_h = frame_img.size
-                paste_x = box_x + (max_sticker_size - final_w) // 2
-                paste_y = box_y + (max_sticker_size - final_h) // 2
-                
-                frame_with_bg = bg_img.copy()
-                frame_with_bg.paste(frame_img, (paste_x, paste_y), frame_img)
-                
-                draw = ImageDraw.Draw(frame_with_bg)
-                try:
-                    font_desc = ImageFont.truetype("stolzl_bold.otf", 54)
-                except IOError:
-                    font_desc = ImageFont.load_default()
-                
-                full_text = f"Было использовано ровно {count} этих стикеров"
-                x_pos = 159
-                max_width = 640
-                line_height = 55
-                text_color = "#A35F5F"
-                target_bottom_y = 1649
-                
-                words = full_text.split()
-                lines = []
-                current_line = []
-                
-                for word in words:
-                    test_line = ' '.join(current_line + [word])
-                    w = draw.textlength(test_line, font=font_desc)
-                    if w <= max_width:
-                        current_line.append(word)
-                    else:
-                        lines.append(' '.join(current_line))
-                        current_line = [word]
-                lines.append(' '.join(current_line))
-                
-                total_height = len(lines) * line_height
-                start_y = target_bottom_y - total_height
-                current_y = start_y
-                for line in lines:
-                    draw_text_with_spacing(draw, line, (x_pos, current_y), font_desc, text_color, -0.04)
-                    current_y += line_height
-                
-                frames.append(np.array(frame_with_bg.convert("RGB")))
-            
-            reader.close()
-            
-            temp_gif = tempfile.NamedTemporaryFile(delete=False, suffix='.gif')
-            temp_gif.close()
-            
-            imageio.mimsave(temp_gif.name, frames, fps=min(fps, 10), loop=0)
-            
-            with open(temp_gif.name, 'rb') as f:
-                gif_bytes = f.read()
-            
-            os.unlink(temp_video.name)
-            os.unlink(temp_gif.name)
-            
-            bio = io.BytesIO()
-            bio.write(gif_bytes)
-            bio.seek(0)
-            return bio
         except Exception as e:
-            print(f"Ошибка обработки видео-стикера: {e}")
-            if os.path.exists(temp_video.name):
-                os.unlink(temp_video.name)
+            print(f"Ошибка открытия видео: {e}")
             return None
+        
+        try:
+            font_desc = ImageFont.truetype("stolzl_bold.otf", 54)
+        except IOError:
+            font_desc = ImageFont.load_default()
+
+        full_text = f"Было использовано ровно {count} этих стикеров"
+        x_pos = 159
+        max_width = 640
+        line_height = 55
+        text_color = "#A35F5F"
+        target_bottom_y = 1649
+        
+        tmp_draw = ImageDraw.Draw(base_bg)
+        words = full_text.split()
+        lines = []
+        current_line = []
+        for word in words:
+            test_line = ' '.join(current_line + [word])
+            w = tmp_draw.textlength(test_line, font=font_desc)
+            if w <= max_width:
+                current_line.append(word)
+            else:
+                lines.append(' '.join(current_line))
+                current_line = [word]
+        lines.append(' '.join(current_line))
+        total_height = len(lines) * line_height
+        start_y = target_bottom_y - total_height
+
+        # Читаем кадры через итератор reader
+        for i, frame in enumerate(reader):
+            # Пропуск кадров (экономия ресурсов)
+            if i % 2 != 0:
+                continue
+                
+            frame_img = Image.fromarray(frame).convert("RGBA")
+            
+            old_w, old_h = frame_img.size
+            ratio = min(max_sticker_size / old_w, max_sticker_size / old_h)
+            new_w = int(old_w * ratio)
+            new_h = int(old_h * ratio)
+            frame_img = frame_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+            
+            final_w, final_h = frame_img.size
+            paste_x = box_x + (max_sticker_size - final_w) // 2
+            paste_y = box_y + (max_sticker_size - final_h) // 2
+            
+            frame_with_bg = base_bg.copy()
+            frame_with_bg.paste(frame_img, (paste_x, paste_y), frame_img)
+            
+            draw = ImageDraw.Draw(frame_with_bg)
+            current_y = start_y
+            for line in lines:
+                draw_text_with_spacing(draw, line, (x_pos, current_y), font_desc, text_color, -0.04)
+                current_y += line_height
+            
+            # Уменьшаем размер кадра для оптимизации размера файла
+            frame_with_bg.thumbnail((512, 512), Image.Resampling.LANCZOS)
+            
+            frames.append(np.array(frame_with_bg.convert("RGB")))
+            
+            # Ограничитель, чтобы не зависнуть
+            if len(frames) > 50:
+                break
+        
+        reader.close()
+
+        if os.path.exists(temp_video.name):
+            os.unlink(temp_video.name)
+
+        if not frames:
+            return None
+
+        # Зацикливаем кадры, если стикер слишком короткий
+        # Минимальная длина: 5 секунд при 10 fps = 50 кадров
+        min_frames = 50
+        if len(frames) < min_frames:
+            original_frames = frames.copy()
+            while len(frames) < min_frames:
+                frames.extend(original_frames)
+            # Обрезаем до нужной длины
+            frames = frames[:min_frames]
+
+        # Сохраняем как MP4 используя временный файл (ffmpeg не может писать в BytesIO)
+        temp_output = None
+        try:
+            temp_output = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+            temp_output.close()
+            
+            writer = imageio.get_writer(temp_output.name, format='ffmpeg', codec='libx264', fps=10, pixelformat='yuv420p')
+            for frame in frames:
+                writer.append_data(frame)
+            writer.close()
+            
+            # Читаем готовый MP4 в BytesIO
+            with open(temp_output.name, 'rb') as f:
+                output_io = io.BytesIO(f.read())
+            
+            # Удаляем временный файл
+            if os.path.exists(temp_output.name):
+                os.unlink(temp_output.name)
+            
+            output_io.seek(0)
+            return output_io
+        except Exception as e:
+            print(f"Ошибка создания MP4: {e}")
+            # Очищаем временный файл при ошибке
+            if temp_output and os.path.exists(temp_output.name):
+                try:
+                    os.unlink(temp_output.name)
+                except:
+                    pass
+            # Fallback на GIF если MP4 не получился
+            output_io = io.BytesIO()
+            imageio.mimsave(output_io, frames, format='GIF', loop=0, duration=0.1)
+            output_io.seek(0)
+            return output_io
+
     except Exception as e:
-        print(f"Ошибка создания GIF из видео-стикера: {e}")
+        print(f"Ошибка обработки видео-стикера: {e}")
+        if temp_video and os.path.exists(temp_video.name):
+            try: os.unlink(temp_video.name)
+            except: pass
+        if reader:
+            reader.close()
         return None
