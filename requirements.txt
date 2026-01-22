@@ -8,3 +8,4 @@ httpx
 pymorphy2
 imageio
 imageio-ffmpeg
+setuptools
