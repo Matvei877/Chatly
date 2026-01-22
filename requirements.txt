@@ -5,7 +5,7 @@ Pillow
 fastapi
 uvicorn
 httpx
-pymorphy2
+pymorphy3
 imageio
 imageio-ffmpeg
 setuptools

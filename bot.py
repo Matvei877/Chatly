@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from pymorphy2 import MorphAnalyzer
+from pymorphy3 import MorphAnalyzer
 
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
