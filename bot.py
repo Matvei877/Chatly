@@ -9,23 +9,22 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+from pymorphy2 import MorphAnalyzer
 
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
 from aiogram.enums import ChatMemberStatus
-from aiogram.types import BotCommand, MessageReactionUpdated, BufferedInputFile, InputMediaPhoto
+from aiogram.types import BotCommand, MessageReactionUpdated, BufferedInputFile, InputMediaPhoto, InputMediaAnimation
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.exceptions import TelegramBadRequest
 
-# Убедитесь, что файл main_draw.py загружен на сервер!
-from main_draw import create_active_user_image, create_top_words_image, create_top_sticker_image
+from main_draw import create_active_user_image, create_top_words_image, create_top_sticker_image, create_top_sticker_gif
 
-# --- НАСТРОЙКИ И КОНФИГУРАЦИЯ ---
 logging.basicConfig(level=logging.INFO)
 dotenv.load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-# Логика получения ссылки на БД
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     try:
@@ -36,13 +35,32 @@ if not DATABASE_URL:
         print("⚠️ DATABASE_URL не найден ни в переменных, ни в config.py!")
         DATABASE_URL = "" 
 
-# Глобальные переменные
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 db_pool = None
-STOP_WORDS = {"и", "в", "не", "на", "я", "что", "с", "а", "то", "как", "у", "все", "но", "по", "он", "она", "так", "же", "от", "о", "ты", "за", "да", "из", "к", "мы", "бы", "вы", "ну", "ли", "ни", "много", "это"}
+morph = MorphAnalyzer()
 
-# --- ФУНКЦИИ БД ---
+STOP_WORDS = {
+    "и", "в", "не", "на", "я", "что", "с", "а", "то", "как", "у", "все", "но", "по", "он", "она", 
+    "так", "же", "от", "о", "ты", "за", "да", "из", "к", "мы", "бы", "вы", "ну", "ли", "ни", "много", 
+    "это", "этот", "эта", "эти", "этот", "эту", "этим", "этого", "этой", "этих", "этими", "этом",
+    "он", "она", "оно", "они", "его", "её", "их", "ему", "ей", "им", "его", "её", "их", "ним", "ней", "ними",
+    "мой", "моя", "моё", "мои", "твой", "твоя", "твоё", "твои", "наш", "наша", "наше", "наши", "ваш", "ваша", "ваше", "ваши",
+    "себя", "себе", "собой", "собою",
+    "кто", "что", "какой", "какая", "какое", "какие", "чей", "чья", "чьё", "чьи", "который", "которая", "которое", "которые",
+    "где", "куда", "откуда", "когда", "почему", "зачем", "как", "сколько", "чей",
+    "быть", "был", "была", "было", "были", "будет", "будут", "буду", "будешь", "будем", "будете",
+    "есть", "есть", "суть",
+    "весь", "вся", "всё", "все", "всего", "всей", "всем", "всеми", "всём",
+    "сам", "сама", "само", "сами", "самого", "самой", "самому", "самим", "самими", "самом", "самой",
+    "уже", "ещё", "тоже", "только", "лишь", "просто", "даже", "вот", "вон", "тут", "там", "здесь", "туда", "сюда",
+    "очень", "совсем", "почти", "чуть", "немного", "много", "мало", "больше", "меньше",
+    "или", "либо", "ни", "нибудь", "либо", "ли", "же", "ведь", "хотя", "если", "когда", "пока", "чтобы", "чтоб",
+    "без", "для", "до", "из", "к", "на", "над", "о", "об", "от", "перед", "по", "под", "при", "про", "с", "со", "у", "через",
+    "можно", "нужно", "надо", "должен", "должна", "должно", "должны", "может", "может", "может", "могут",
+    "будет", "будет", "будет", "будут", "стал", "стала", "стало", "стали", "станет", "станут"
+}
+
 async def init_db_pool():
     global db_pool
     if not DATABASE_URL:
@@ -51,7 +69,6 @@ async def init_db_pool():
     try:
         db_pool = await asyncpg.create_pool(dsn=DATABASE_URL)
         async with db_pool.acquire() as connection:
-            # Создаем таблицы, если их нет
             await connection.execute('''CREATE TABLE IF NOT EXISTS sticker_stats (chat_id BIGINT, unique_id TEXT, file_id TEXT, count INTEGER DEFAULT 1, PRIMARY KEY (chat_id, unique_id))''')
             await connection.execute('''CREATE TABLE IF NOT EXISTS word_stats (chat_id BIGINT, word TEXT, count INTEGER DEFAULT 1, PRIMARY KEY (chat_id, word))''')
             await connection.execute('''CREATE TABLE IF NOT EXISTS user_stats (chat_id BIGINT, user_id BIGINT, full_name TEXT, msg_count INTEGER DEFAULT 1, PRIMARY KEY (chat_id, user_id))''')
@@ -68,29 +85,121 @@ async def delete_chat_data(chat_id):
         await connection.execute('DELETE FROM user_stats WHERE chat_id = $1', chat_id)
         await connection.execute('DELETE FROM message_stats WHERE chat_id = $1', chat_id)
 
+def normalize_word(word):
+    try:
+        parsed = morph.parse(word)[0]
+        normal_form = parsed.normal_form
+        return normal_form.lower()
+    except:
+        return word.lower()
+
 def clean_and_split_text(text):
     if not text: return []
     text = re.sub(r'[^\w\s]', '', text.lower())
-    return [w for w in text.split() if len(w) > 2 and w not in STOP_WORDS]
+    words = []
+    for w in text.split():
+        if len(w) > 2:
+            normalized = normalize_word(w)
+            if normalized not in STOP_WORDS:
+                words.append(normalized)
+    return words
 
-# --- ФОНОВЫЕ ЗАДАЧИ ---
+async def update_active_user_title(chat_id):
+    if not db_pool:
+        return
+    
+    try:
+        async with db_pool.acquire() as conn:
+            user_row = await conn.fetchrow(
+                'SELECT user_id, full_name, msg_count FROM user_stats WHERE chat_id=$1 ORDER BY msg_count DESC LIMIT 1',
+                chat_id
+            )
+            
+            if not user_row or user_row['msg_count'] < 10:
+                return
+            
+            user_id = user_row['user_id']
+            
+            try:
+                bot_info = await bot.get_me()
+                bot_member = await bot.get_chat_member(chat_id, bot_info.id)
+                if bot_member.status != ChatMemberStatus.ADMINISTRATOR:
+                    return
+                
+                if not bot_member.can_promote_members:
+                    return
+            except:
+                return
+            
+            try:
+                user_member = await bot.get_chat_member(chat_id, user_id)
+                
+                if user_member.status == ChatMemberStatus.ADMINISTRATOR:
+                    try:
+                        await bot.set_chat_administrator_custom_title(chat_id, user_id, "Самый активный")
+                        print(f"✅ Установлен титул 'Самый активный' для пользователя {user_id} в чате {chat_id}")
+                    except TelegramBadRequest as e:
+                        if "not enough rights" not in str(e).lower():
+                            print(f"⚠️ Ошибка установки титула: {e}")
+                elif user_member.status == ChatMemberStatus.MEMBER:
+                    try:
+                        await bot.promote_chat_member(
+                            chat_id=chat_id,
+                            user_id=user_id,
+                            can_manage_chat=False,
+                            can_delete_messages=False,
+                            can_manage_video_chats=False,
+                            can_restrict_members=False,
+                            can_promote_members=False,
+                            can_change_info=False,
+                            can_invite_users=False,
+                            can_post_messages=False,
+                            can_edit_messages=False,
+                            can_pin_messages=False,
+                            can_manage_topics=False
+                        )
+                        await asyncio.sleep(0.5)
+                        await bot.set_chat_administrator_custom_title(chat_id, user_id, "Самый активный")
+                        print(f"✅ Пользователь {user_id} назначен администратором с титулом 'Самый активный' в чате {chat_id}")
+                    except TelegramBadRequest as e:
+                        print(f"⚠️ Не удалось назначить администратором: {e}")
+            except Exception as e:
+                print(f"⚠️ Ошибка при обновлении титула для чата {chat_id}: {e}")
+    except Exception as e:
+        print(f"⚠️ Ошибка в update_active_user_title: {e}")
+
 async def keep_alive_task():
-    # 🛠 ИСПРАВЛЕНИЕ 1: Добавили /ping в конец ссылки, чтобы не было ошибки 404
     url = "https://chatly-backend-nflu.onrender.com/ping" 
     print(f"🔄 Запущен пингер для: {url}")
 
     while True:
-        await asyncio.sleep(600)  # 10 минут
+        await asyncio.sleep(600)
         try:
             async with httpx.AsyncClient() as client:
                 await client.get(url)
         except Exception as e:
             print(f"⚠️ Ошибка пинга: {e}")
 
-# --- LIFESPAN (ЗАПУСК И ОСТАНОВКА) ---
+async def update_titles_task():
+    if not db_pool:
+        return
+    
+    while True:
+        await asyncio.sleep(3600)
+        try:
+            async with db_pool.acquire() as conn:
+                chat_ids = await conn.fetch('SELECT DISTINCT chat_id FROM user_stats')
+                for row in chat_ids:
+                    chat_id = row['chat_id']
+                    try:
+                        await update_active_user_title(chat_id)
+                    except Exception as e:
+                        print(f"⚠️ Ошибка обновления титула для чата {chat_id}: {e}")
+        except Exception as e:
+            print(f"⚠️ Ошибка в update_titles_task: {e}")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 1. Старт
     await init_db_pool()
     
     await bot.set_my_commands([BotCommand(command="stats", description="Показать статистику")])
@@ -98,18 +207,20 @@ async def lifespan(app: FastAPI):
     
     polling_task = asyncio.create_task(dp.start_polling(bot, allowed_updates=["message", "message_reaction", "chat_member", "my_chat_member"]))
     ping_task = asyncio.create_task(keep_alive_task())
+    titles_task = asyncio.create_task(update_titles_task())
     
     print("🚀 Сервер и Бот запущены!")
     
-    yield # Работа приложения
+    yield
     
-    # 2. Остановка
     print("🛑 Остановка сервера...")
     polling_task.cancel()
     ping_task.cancel()
+    titles_task.cancel()
     try:
         await polling_task
         await ping_task
+        await titles_task
     except asyncio.CancelledError:
         pass
 
@@ -117,7 +228,6 @@ async def lifespan(app: FastAPI):
         await db_pool.close()
     print("👋 Все соединения закрыты.")
 
-# --- FASTAPI APP ---
 app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
@@ -128,12 +238,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 🛠 ИСПРАВЛЕНИЕ 2: Добавили главную страницу, чтобы не было ошибки 404
 @app.get("/")
 async def root():
     return "Bot is running!"
 
-# 🛠 ИСПРАВЛЕНИЕ 3: Разрешили методы GET и HEAD, чтобы мониторинг не давал ошибку 405
 @app.api_route("/ping", methods=["GET", "HEAD"])
 async def ping_server():
     return {"status": "alive"}
@@ -173,7 +281,6 @@ async def get_chat_stats_api(chat_id: int):
         "top_words": top_words
     }
 
-# --- ХЕНДЛЕРЫ БОТА ---
 @dp.message(Command("stats"))
 async def send_stats(message: types.Message):
     chat_id = message.chat.id
@@ -189,6 +296,7 @@ async def send_stats(message: types.Message):
     sticker_file_id = None
     sticker_count = 0
     sticker_bytes = None
+    is_video_sticker = False
 
     async with db_pool.acquire() as conn:
         user_row = await conn.fetchrow('SELECT user_id, full_name, msg_count FROM user_stats WHERE chat_id=$1 ORDER BY msg_count DESC LIMIT 1', chat_id)
@@ -218,9 +326,21 @@ async def send_stats(message: types.Message):
     if sticker_file_id:
         try:
             st_file_info = await bot.get_file(sticker_file_id)
-            st_downloaded = await bot.download_file(st_file_info.file_path)
-            sticker_bytes = st_downloaded.read()
-        except Exception: pass
+            file_path = st_file_info.file_path
+            
+            if file_path and file_path.endswith('.webm'):
+                st_downloaded = await bot.download_file(file_path)
+                sticker_bytes = st_downloaded.read()
+                is_video_sticker = True
+            elif file_path and file_path.endswith('.tgs'):
+                sticker_bytes = None
+            else:
+                st_downloaded = await bot.download_file(file_path)
+                sticker_bytes = st_downloaded.read()
+                is_video_sticker = False
+        except Exception: 
+            sticker_bytes = None
+            is_video_sticker = False
 
     media_group = []
     
@@ -244,10 +364,16 @@ async def send_stats(message: types.Message):
 
     if sticker_bytes:
         try:
-            image_sticker = await asyncio.to_thread(create_top_sticker_image, sticker_bytes, sticker_count)
-            if image_sticker:
-                file_sticker = BufferedInputFile(image_sticker.read(), filename="sticker.png")
-                media_group.append(InputMediaPhoto(media=file_sticker))
+            if is_video_sticker:
+                gif_sticker = await asyncio.to_thread(create_top_sticker_gif, sticker_bytes, sticker_count)
+                if gif_sticker:
+                    file_sticker = BufferedInputFile(gif_sticker.read(), filename="sticker.gif")
+                    media_group.append(InputMediaAnimation(media=file_sticker))
+            else:
+                image_sticker = await asyncio.to_thread(create_top_sticker_image, sticker_bytes, sticker_count)
+                if image_sticker:
+                    file_sticker = BufferedInputFile(image_sticker.read(), filename="sticker.png")
+                    media_group.append(InputMediaPhoto(media=file_sticker))
         except Exception as e:
             print(f"Ошибка генерации картинки sticker: {e}")
 
@@ -259,6 +385,11 @@ async def send_stats(message: types.Message):
     if media_group:
         await message.answer_media_group(media=media_group)
         await message.answer("👆 Полная статистика и анимация на сайте:", reply_markup=keyboard)
+        
+        try:
+            await update_active_user_title(chat_id)
+        except Exception as e:
+            print(f"⚠️ Ошибка обновления титула при /stats: {e}")
     else:
         await message.answer("❌ Недостаточно данных для статистики.")
 
@@ -274,11 +405,15 @@ async def on_bot_status_change(event: types.ChatMemberUpdated):
 @dp.message(F.sticker)
 async def count_stickers(message: types.Message):
     if not db_pool: return
+    sticker = message.sticker
+    file_id = sticker.file_id
+    unique_id = sticker.file_unique_id
+    
     async with db_pool.acquire() as conn:
         await conn.execute('''
             INSERT INTO sticker_stats (chat_id, unique_id, file_id, count) VALUES ($1, $2, $3, 1)
             ON CONFLICT (chat_id, unique_id) DO UPDATE SET count = sticker_stats.count + 1, file_id = EXCLUDED.file_id
-        ''', message.chat.id, message.sticker.file_unique_id, message.sticker.file_id)
+        ''', message.chat.id, unique_id, file_id)
 
 @dp.message_reaction()
 async def track_reactions(event: MessageReactionUpdated):
@@ -313,7 +448,6 @@ async def process_text_message(message: types.Message):
                 ON CONFLICT (chat_id, word) DO UPDATE SET count = word_stats.count + 1
             ''', chat_id, word)
 
-# --- ЗАПУСК ---
 if __name__ == "__main__":
     port = int(os.getenv("SERVER_PORT", os.getenv("PORT", 8000)))
     print(f"🏁 Запуск сервера на порту {port}")

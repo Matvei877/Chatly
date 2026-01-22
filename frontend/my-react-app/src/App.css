@@ -1,41 +1,38 @@
-/* 1. ГЛОБАЛЬНЫЙ СБРОС */
 body, html, #root {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
-  overflow: hidden; /* Блокируем прокрутку всей страницы */
+  overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased; /* Улучшает рендеринг шрифтов на iOS/Mac */
+  -webkit-font-smoothing: antialiased;
 }
 @font-face {
-  font-family: 'Stolzl'; /* Придумываем имя шрифту */
-  src: url('./assets/fonts/stolzl_regular.otf') format('opentype'); /* Указываем путь к файлу */
-  font-weight: regular; /* Так как это Bold версия */
+  font-family: 'Stolzl';
+  src: url('./assets/fonts/stolzl_regular.otf') format('opentype');
+  font-weight: regular;
   font-style: normal;
 }
 @font-face {
-  font-family: 'Stolzlbold'; /* Придумываем имя шрифту */
-  src: url('./assets/fonts/stolzl_bold.otf') format('opentype'); /* Указываем путь к файлу */
-  font-weight: regular; /* Так как это Bold версия */
+  font-family: 'Stolzlbold';
+  src: url('./assets/fonts/stolzl_bold.otf') format('opentype');
+  font-weight: regular;
   font-style: normal;
 }
-/* 2. ГЛАВНЫЙ КОНТЕЙНЕР */
 .main-container {
   display: flex;
-  flex-direction: column; /* Элементы выстраиваются в столбик: Верх -> Центр -> Низ */
+  flex-direction: column;
   width: 100vw;
-  height: 100vh;  /* Для старых браузеров */
-  height: 100dvh; /* Динамическая высота (учитывает адресную строку мобильных браузеров) */
-  background-color: #fff; /* На всякий случай фон белый */
+  height: 100vh;
+  height: 100dvh;
+  background-color: #fff;
 }
 
-/* 3. ВЕРХНИЙ БЕЛЫЙ БЛОК */
 .white-header {
   width: 100%;
-  height: 100px;/* Высота чуть меньше, чем у нижнего блока */
+  height: 100px;
   background-color: #ffffff;
-  flex-shrink: 0; /* Запрещаем сжиматься, высота всегда фиксирована */
+  flex-shrink: 0;
   z-index: 10;
 }
 
@@ -46,10 +43,9 @@ body, html, #root {
   position: relative; 
   overflow: hidden;
 
-  /* ИЗМЕНЕНИЯ ЗДЕСЬ: */
   display: flex;
-  flex-direction: column; /* Выстраиваем элементы сверху вниз */
-  align-items: center;    /* Центрируем индикаторы по горизонтали */
+  flex-direction: column;
+  align-items: center;
   padding-top: 30px;
 }
 
@@ -60,60 +56,54 @@ body, html, #root {
   pointer-events: none;
   opacity: 1;
 
-  /* --- 1. РАЗМЕР И ОГРАНИЧЕНИЕ --- */
-  width: 65%;         /* На мобильных занимает 75% ширины экрана */
-  max-width: 320px;   /* <--- ДОБАВИЛИ ЭТО: Не растягиваться шире 450px */
-  height: 700px;       
+  width: 65%;
+  max-width: 320px;
+  height: 700px;
   
-  /* --- 2. ПОЛОЖЕНИЕ --- */
   top: -10%;
   
-  /* Можно задать отступ справа в пикселях, чтобы на больших экранах
-     она не улетала слишком далеко, или оставить в % */
-  right: -20px; /* Я заменил % на px для более точного контроля края */
+  right: -20px;
   
   left: auto; 
 }
 .avatar-container {
   position: absolute;
-  top: 40%; /* Регулируйте высоту */
+  top: 40%;
   left: 50%;
   transform: translate(-50%, -50%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  z-index: 10; /* Поверх фона */
+  z-index: 10;
 }
 
-/* Сама картинка аватарки */
 .user-avatar {
   width: 120px;
   height: 120px;
-  border-radius: 50%; /* Круглая */
+  border-radius: 50%;
   object-fit: cover;
-  border: 4px solid white; /* Белая обводка */
+  border: 4px solid white;
   box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 .top-words-list {
   position: absolute;
   top: 50%;
-  left: 24px;        /* Выравнивание по левому краю (как у заголовка) */
-  transform: translateY(-40%); /* Центрируем, чуть сдвигая вверх */
+  left: 24px;
+  transform: translateY(-40%);
   display: flex;
   flex-direction: column;
-  gap: 15px;         /* Расстояние между строками */
+  gap: 15px;
   z-index: 20;
   text-align: left;
 }
 
 .top-word-item {
-  font-family: 'Stolzlbold', sans-serif; /* Жирный шрифт */
-  font-size: 40px;    /* Очень крупный размер */
+  font-family: 'Stolzlbold', sans-serif;
+  font-size: 40px;
   line-height: 1.1;
   color: #ffffff;
-  white-space: nowrap; /* Чтобы длинные слова не ломали верстку слишком сильно */
+  white-space: nowrap;
 }
-/* Заглушка, если нет фото */
 .user-avatar-placeholder {
   width: 120px;
   height: 120px;
@@ -127,7 +117,6 @@ body, html, #root {
   border: 4px solid white;
 }
 
-/* Имя и счетчик */
 .user-name-overlay {
   margin-top: 15px;
   font-size: 20px;
@@ -143,76 +132,67 @@ body, html, #root {
   font-size: 14px;
   color: white;
 }
-/* Индикаторы */
 .indicators-wrapper {
   display: flex;
   gap: 8px;
   position: relative; 
   z-index: 10; 
   
-  /* Добавляем отступ снизу, чтобы текст не прилипал к индикаторам */
   margin-bottom: 30px; 
 }
 
 .indicator {
   width: 40px;
   height: 8px;
-  background-color: rgba(255, 255, 255, 0.4); /* Полупрозрачный белый */
+  background-color: rgba(255, 255, 255, 0.4);
   border-radius: 2px;
   transition: background-color 0.3s ease;
 }
 
 .indicator.active {
-  background-color: #ffffff; /* Активный индикатор - ярко белый */
+  background-color: #ffffff;
 }
 .slide-title {
-  position: relative; /* Чтобы быть выше фона */
-  z-index: 10;        /* Поверх картинки-кляксы */
+  position: relative;
+  z-index: 10;
   
-  width: 100%;        /* Занимает всю ширину */
-  padding: 0 24px;    /* Отступы слева и справа от края экрана */
+  width: 100%;
+  padding: 0 24px;
   box-sizing: border-box;
 
-  font-family: 'Stolzlbold', sans-serif; /* Ваш шрифт */
-  /* Если в @font-face вы указали font-weight: regular для Bold файла, оставляем normal */
+  font-family: 'Stolzlbold', sans-serif;
   font-weight: normal; 
   
-  font-size: 30px;    /* Размер шрифта (подберите под макет) */
-  line-height: 1.1;   /* Межстрочный интервал (плотный, как на макете) */
-  color: #ffffff;     /* Белый цвет */
+  font-size: 30px;
+  line-height: 1.1;
+  color: #ffffff;
   
-  text-align: left;   /* Выравнивание по левому краю */
-  white-space: pre-wrap; /* Чтобы работал перенос строки \n из JS */
-  margin: 0;          /* Убираем лишние отступы браузера */
+  text-align: left;
+  white-space: pre-wrap;
+  margin: 0;
 }
 
-/* 5. НИЖНИЙ БЕЛЫЙ БЛОК (ФУТЕР) */
 .white-footer {
   width: 100%;
   background-color: #ffffff;
-  /* Внутренние отступы: Сверху 24px, Снизу 40px (безопасная зона для iOS) */
   padding: 24px 20px 20px 20px; 
   box-sizing: border-box;
   
   display: flex;
-  justify-content: center; /* Центрируем контейнер с кнопками */
-  flex-shrink: 0; /* Запрещаем сжиматься */
+  justify-content: center;
+  flex-shrink: 0;
 }
 
-/* Ограничитель ширины кнопок (чтобы на ПК не были огромными) */
 .buttons-container {
   display: flex;
   gap: 12px;
   width: 100%;
-  max-width: 360px; /* Максимальная ширина блока кнопок */
+  max-width: 360px;
 }
 
-/* 6. СТИЛИ КНОПОК */
 .btn {
-  /* Добавляем 'Stolzl' в начало списка шрифтов */
   font-family: 'Stolzl', -apple-system, BlinkMacSystemFont, sans-serif;
   
-  /* Остальные стили кнопок остаются прежними */
   flex: 1;
   height: 50px;
   border-radius: 12px;
@@ -228,20 +208,17 @@ body, html, #root {
   user-select: none;
 }
 
-/* Эффект нажатия */
 .btn:active {
   opacity: 0.7;
   transform: scale(0.98);
 }
 
-/* Кнопка "Поделиться" (Белая) */
 .btn-share {
   background-color: #ffffff;
-  border: 1.6px solid #000000; /* Чуть жирнее рамка */
+  border: 1.6px solid #000000;
   color: #000000;
 }
 
-/* Кнопка "Дальше" (Черная) */
 .btn-next {
   background-color: #2D2D2D;
   border: none;
@@ -260,7 +237,6 @@ body, html, #root {
   z-index: 10;
 }
 
-/* Пузырек со словом */
 .word-bubble {
   background-color: rgba(255, 255, 255, 0.9);
   padding: 8px 16px;
@@ -269,7 +245,7 @@ body, html, #root {
   align-items: center;
   gap: 8px;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  animation: popIn 0.5s ease forwards; /* Анимация появления */
+  animation: popIn 0.5s ease forwards;
 }
 
 .word-text {
@@ -286,30 +262,26 @@ body, html, #root {
   font-size: 12px;
   font-weight: bold;
 }
-/* --- НОВЫЙ ДИЗАЙН ПЕРВОГО СЛАЙДА --- */
 
-/* 1. Контейнер для цифры слева */
 .stats-left-container {
   position: absolute;
-  left: 20px;       /* Отступ слева */
-  top: 50%;         /* Центр по вертикали */
-  transform: translateY(-50%); /* Точная центровка */
-  z-index: 20;      /* Поверх фона и аватарки */
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
   display: flex;
   flex-direction: column;
-  align-items: flex-start; /* Прижать влево */
+  align-items: flex-start;
 }
 
-/* Огромная цифра */
 .big-number {
   font-family: 'Stolzlbold', sans-serif;
-  font-size: 90px;  /* Размер как на макете */
-  line-height: 0.8; /* Чтобы цифры стояли плотно */
+  font-size: 90px;
+  line-height: 0.8;
   color: #ffffff;
   margin-bottom: 5px;
 }
 
-/* Надпись "сообщений" */
 .big-number-label {
   font-family: 'Stolzlbold', sans-serif;
   font-size: 24px;
@@ -317,29 +289,24 @@ body, html, #root {
   opacity: 0.9;
 }
 
-/* 2. Контейнер для аватарки справа */
 .hero-avatar-container {
   position: absolute;
   right: -50px;
   top: 55%;
-  transform: translateY(-50%); /* Исходное положение */
+  transform: translateY(-50%);
   z-index: 15;
   
-  /* !!! ДОБАВЛЕНА АНИМАЦИЯ !!! */
-  /* Анимация длится 0.8сек, с плавной кривой безье */
   animation: slideInRight 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
-/* Сама картинка */
 .hero-avatar {
-  width: 260px;     /* Большая аватарка */
+  width: 260px;
   height: 260px;
   border-radius: 50%;
   object-fit: cover;
-  box-shadow: 0px 10px 30px rgba(0,0,0,0.2); /* Тень влево-вниз */
+  box-shadow: 0px 10px 30px rgba(0,0,0,0.2);
 }
 
-/* Заглушка, если нет фото */
 .hero-avatar-placeholder {
   width: 260px;
   height: 260px;
@@ -353,28 +320,25 @@ body, html, #root {
   border: 6px solid rgba(255, 255, 255, 0.2);
 }
 
-/* 3. Описание снизу слева */
 .bottom-description-text {
   position: absolute;
-  bottom: 50px;     /* Отступ от нижнего края (над индикаторами) */
+  bottom: 50px;
   left: 24px;
-  width: 50%;       /* Ограничиваем ширину, чтобы не наезжало далеко */
+  width: 50%;
   
   font-family: 'Stolzlbold', sans-serif;
   font-size: 14px;
   line-height: 1.2;
-  color: #383838;   /* Темно-серый цвет текста как на макете */
+  color: #383838;
   opacity: 0.8;
   z-index: 20;
   text-align: left;
 }
-/* --- АНИМАЦИИ (Keyframes) --- */
 
-/* 1. Плавное появление снизу вверх (для текста) */
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(30px); /* Начинаем ниже на 30px */
+    transform: translateY(30px);
   }
   to {
     opacity: 1;
@@ -382,23 +346,21 @@ body, html, #root {
   }
 }
 
-/* 2. Выезд справа налево (для аватарки) */
 @keyframes slideInRight {
   from {
     opacity: 0;
-    transform: translateX(100px) translateY(-50%); /* Сдвиг вправо + сохранение центровки по Y */
+    transform: translateX(100px) translateY(-50%);
   }
   to {
     opacity: 1;
-    transform: translateX(0) translateY(-50%); /* Возврат на место */
+    transform: translateX(0) translateY(-50%);
   }
 }
 
-/* 3. Появление слов (для списка топ слов) */
 @keyframes popInList {
   from {
     opacity: 0;
-    transform: scale(0.9) translateY(-40%); /* Чуть меньше и сохраняем центровку Y */
+    transform: scale(0.9) translateY(-40%);
   }
   to {
     opacity: 1;

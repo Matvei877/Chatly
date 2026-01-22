@@ -4,7 +4,7 @@ import './App.css';
 
 import shapeImage from './assets/shape1.png'; 
 
-// Убедитесь, что ссылка правильная (без слэша в конце)
+
 const API_URL = "https://chatly-backend-nflu.onrender.com"; 
 
 const slides = [
@@ -35,12 +35,12 @@ const slides = [
 function App() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true); // Добавили состояние загрузки
+  const [loading, setLoading] = useState(true); 
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     
-    // 1. ИЗМЕНЕНИЕ: Ищем параметр 'id', так как бот отправляет ?id=...
+    
     const chatId = params.get('id'); 
 
     if (chatId) {
@@ -73,20 +73,17 @@ function App() {
   };
   
   const handleShare = async () => {
-    // Получаем ID из URL (так же, как в useEffect)
     const params = new URLSearchParams(window.location.search);
     const chatId = params.get('id');
 
     if (!chatId) return;
 
-    // Пытаемся закрыть Mini App после нажатия (если это Telegram WebApp)
     // @ts-ignore
     if (window.Telegram && window.Telegram.WebApp) {
         // @ts-ignore
         window.Telegram.WebApp.close();
     }
 
-    // Отправляем запрос боту, чтобы он скинул картинки
     try {
       await fetch(`${API_URL}/api/share/${chatId}`, {
         method: 'POST',
@@ -105,13 +102,11 @@ function App() {
 
   const currentSlide = slides[currentIndex];
 
-  // Если идет загрузка или нет данных
   if (loading) return <div className="white-header">Загрузка...</div>;
   if (!stats && !loading) return <div className="white-header">Нет данных (откройте через бота)</div>;
 
   return (
     <div className="main-container" {...handlers}>
-      
       <div className="white-header"></div>
 
       <div 
@@ -122,7 +117,6 @@ function App() {
 
         {currentIndex === 0 && stats && stats.active_user && (
           <>
-            {/* БЛОК С ЦИФРАМИ СЛЕВА */}
             <div className="stats-left-container">
               <div className="big-number">
                 {stats.active_user.count}
@@ -132,7 +126,6 @@ function App() {
               </div>
             </div>
 
-            {/* БЛОК С АВАТАРКОЙ СПРАВА */}
             <div className="hero-avatar-container">
                {stats.active_user.avatar_url ? (
                   <img 
@@ -147,7 +140,6 @@ function App() {
                )}
             </div>
 
-            {/* ТЕКСТ СНИЗУ (Имя в описании) */}
             <div className="bottom-description-text">
               <span style={{ fontWeight: 'bold' }}>{stats.active_user.name}</span> написал больше всего сообщений в чате ({stats.active_user.count}) !
             </div>
@@ -156,9 +148,7 @@ function App() {
 
         {currentIndex === 1 && stats && stats.top_words && stats.top_words.length >= 2 && (
           <>
-            {/* СПИСОК СЛОВ СЛЕВА */}
             <div className="top-words-list">
-              {/* Используем slice(0, 2), чтобы взять только первые два элемента */}
               {stats.top_words.slice(0, 3).map((item: any, index: number) => (
                 <div key={index} className="top-word-item">
                   {index + 1}. {item.word}
@@ -166,8 +156,6 @@ function App() {
               ))}
             </div>
 
-            {/* ТЕКСТ СНИЗУ (Описание про самое популярное слово) */}
-            {/* Проверяем, что есть хотя бы одно слово, чтобы вывести статистику */}
             {stats.top_words.length > 0 && (
               <div className="bottom-description-text">
                 <span style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>
