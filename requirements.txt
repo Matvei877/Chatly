@@ -5,7 +5,6 @@ Pillow
 fastapi
 uvicorn
 httpx
-pymorphy3
-pymorphy3-dicts-ru
+pymorphy2
 imageio
 imageio-ffmpeg
